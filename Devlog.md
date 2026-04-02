@@ -256,3 +256,6 @@
 - Added CI concurrency and caching (`actions/setup-node` npm cache + `Swatinem/rust-cache`) to keep validation reliable and fast across operating systems.
 - Initialized git for the workspace, configured `origin` to `https://github.com/nishal21/Kura.git`, and added a project `.gitignore` that excludes heavy local artifacts (`node_modules`, `dist`, `src-tauri/target`, `.fastembed_cache`, and local DB files).
 - Created the initial repository commit (`Initial commit: Kura app, docs, export, print, and CI`) and successfully pushed branch `main` to GitHub with tracking enabled (`origin/main`).
+- Added a dedicated production release pipeline at `.github/workflows/production-release.yml` with a full OS matrix (`windows-latest`, `macos-latest`, `ubuntu-latest`) that builds release bundles (`npm run build`), uploads per-OS installers as artifacts, then publishes a GitHub Release with all assets attached.
+- Added production-safe tag triggers (`push` on `v*`) plus manual `workflow_dispatch` support with required `release_tag` input.
+- Updated `src-tauri/tauri.conf.json` bundle identifier from `com.kura.app` to `com.nishal21.kura` to remove the macOS `.app` suffix warning for official builds.
