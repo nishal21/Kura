@@ -259,3 +259,6 @@
 - Added a dedicated production release pipeline at `.github/workflows/production-release.yml` with a full OS matrix (`windows-latest`, `macos-latest`, `ubuntu-latest`) that builds release bundles (`npm run build`), uploads per-OS installers as artifacts, then publishes a GitHub Release with all assets attached.
 - Added production-safe tag triggers (`push` on `v*`) plus manual `workflow_dispatch` support with required `release_tag` input.
 - Updated `src-tauri/tauri.conf.json` bundle identifier from `com.kura.app` to `com.nishal21.kura` to remove the macOS `.app` suffix warning for official builds.
+- Fixed production artifact upload failures by enabling Tauri bundle generation (`src-tauri/tauri.conf.json` -> `bundle.active: true`) so installer outputs are actually created during release builds.
+- Updated `.github/workflows/production-release.yml` to force bundle generation with `npm run build -- --bundles all` and broaden artifact upload paths to support both target layouts (`target/<triple>/release/bundle/**` and `target/release/bundle/**`).
+- Revalidated project health after the release-workflow fix with `npm run test`.
