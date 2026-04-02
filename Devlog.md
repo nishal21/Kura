@@ -254,3 +254,5 @@
 - Added a new cross-platform GitHub Actions workflow at `.github/workflows/cross-platform-setup.yml` that runs on `windows-latest`, `macos-latest`, and `ubuntu-latest` for every push/PR/manual run.
 - Workflow installs Tauri Linux system packages, sets up Node 20 and Rust stable, detects each runner host Rust target, overrides workspace target settings for portability, runs `npm ci`, `npm run test`, `npm run frontend:build`, `cargo check`, and a debug Tauri build smoke test.
 - Added CI concurrency and caching (`actions/setup-node` npm cache + `Swatinem/rust-cache`) to keep validation reliable and fast across operating systems.
+- Initialized git for the workspace, configured `origin` to `https://github.com/nishal21/Kura.git`, and added a project `.gitignore` that excludes heavy local artifacts (`node_modules`, `dist`, `src-tauri/target`, `.fastembed_cache`, and local DB files).
+- Created the initial repository commit (`Initial commit: Kura app, docs, export, print, and CI`) and successfully pushed branch `main` to GitHub with tracking enabled (`origin/main`).
