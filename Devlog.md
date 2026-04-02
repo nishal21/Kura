@@ -1,0 +1,256 @@
+# Devlog
+
+## 2026-04-01
+- Established initial Tauri IPC bridge in Rust with ping_backend and get_system_info commands.
+- Added frontend invoke utility with strict TypeScript guards for safe IPC payload handling.
+- Added PDF parsing backend module with robust error handling for missing files, unreadable/corrupted PDFs, and scanned (image-only) PDFs.
+- Exposed PDF extraction through a new Tauri command: extract_pdf_text(path: String).
+- Added ai_extractor backend module for OpenAI-compatible structured extraction of lattice parameters, band gaps, and a 3-sentence methodology summary.
+- Exposed LLM analysis through a new Tauri command: analyze_paper(text: String).
+- Added frontend App layout with dark-mode minimalist sidebar and split-view dashboard placeholders for PDF and extracted material data.
+- Wired a Test Backend UI button to call ping_backend via the TypeScript API utility and log the backend response.
+- Connected dashboard file selection flow to backend commands: extract_pdf_text(path) followed by analyze_paper(text), with JSON-driven UI rendering.
+- Added frontend loading and status states for heavy operations (Extracting text..., Analyzing with AI...) plus runtime error feedback.
+- Refactored ai_extractor into a model-agnostic provider client supporting OpenAI, Anthropic, Gemini, Mistral, DeepSeek, and OpenRouter with provider-specific endpoints and auth headers.
+- Updated analyze_paper Tauri command to accept provider_type, api_key, model_name, and text for dynamic runtime model/provider selection.
+- Added a dark-mode Settings modal with provider selection, masked API key input, dynamic model picker, and OpenRouter custom model entry.
+- Persisted provider configuration in localStorage and wired frontend analysis calls to send provider_type, api_key, and model_name to analyze_paper.
+- Updated PDF analyze flow to derive provider, API key, and model directly from active Settings state and pass them into analyze_paper with extracted PDF text.
+- Added classified visual alerts for invalid API key responses and provider-side server errors while preserving extraction/analyzing loading states.
+- Added secure_store backend module using OS-native keyring integration for secure API key handling without exposing plaintext to the frontend.
+- Exposed new Tauri commands save_api_key(provider, api_key) and check_api_key(provider) with explicit permission-denial-safe error handling and boolean-only key existence checks.
+- Refactored analyze_paper backend flow to remove api_key from IPC arguments and retrieve provider keys directly from OS keyring at runtime.
+- Added clean missing-key error response ('No API key found for this provider.') and immediate in-memory key scrubbing/drop after HTTP request dispatch.
+- Added Manage Providers Settings section that checks OS-vault key presence via check_api_key on load and supports secure save/overwrite via save_api_key without reading plaintext keys.
+- Removed localStorage API-key persistence; frontend now stores only provider/model preferences while secrets remain in the OS credential manager.
+- Added database backend module using rusqlite to initialize a local SQLite file in the app-local data directory and create the papers table schema.
+- Wired init_db() into Tauri's setup phase so the database is created and ready as soon as the app launches.
+- Added papers table interaction functions for saving analysis records and listing saved paper summaries with unique local_file_path constraint handling.
+- Exposed new Tauri commands save_paper_to_db and get_all_papers, and added strict TypeScript command types/guards in api.ts.
+- Updated sidebar to load saved papers from get_all_papers on mount and render a clickable offline library list with loading/error states.
+- Updated analysis success flow to auto-persist results via save_paper_to_db and show subtle toast feedback (Saved to Library / Already in Library).
+- Generated a production-ready src-tauri/Cargo.toml with required dependencies/features: tauri(api-all/custom-protocol), serde/serde_json, reqwest(json/rustls-tls), keyring, rusqlite(bundled), pdf-extract, and tokio(full), plus size-focused release profile settings.
+- Verified manifest parsing with cargo metadata and surfaced a build alignment note: current tauri.conf.json is schema v2 while this requested tauri feature setup targets v1-style Rust crate configuration.
+- Generated root package.json for React + TypeScript + Vite + Tauri with tauri dev/build scripts, required frontend dependencies, Tailwind toolchain dev dependencies, and lucide-react.
+- Attempted test run: cargo test from workspace root and src-tauri both failed because Cargo.toml is not present yet.
+- Frontend test command is not configured in current workspace (no root package.json/test script), but Rust editor diagnostics remain clean for backend modules.
+
+## 2026-04-02
+- Converted the provided square logo.svg into full Tauri-compatible icon assets (ICO, ICNS, PNG variants, Appx, iOS, Android) under src-tauri/icons.
+- Added explicit bundle icon mappings in tauri.conf.json to point at generated compatibility icons for desktop packaging.
+- Copied logo.svg into public/logo.svg for frontend static asset compatibility and into src-tauri/icons/logo.svg as a reusable icon source file.
+- Updated the sidebar branding UI in App.tsx to display the provided Kura logo directly in the desktop dashboard.
+- Fixed Tauri cargo check failure caused by missing frontendDist path by creating dist/index.html so the configured ../dist target now exists for generate_context validation.
+- Ran project testing pass: TypeScript typecheck passed, Rust cargo test passed (0 tests, compile validation), and cargo check passed.
+- Resolved frontend build failure by adding missing Vite entry files index.html and src/main.tsx, then verified vite production build succeeds and outputs dist assets.
+- Upgraded the placeholder PDF panel by adding src/components/InteractivePdfViewer.tsx with react-pdf sequential page rendering, Tauri fileUrl support, automatic target-text search, yellow highlight spans, and auto-scroll to first match.
+- Added src/components/InteractivePdfViewer.css for highlight styling/animation and integrated the new viewer into App.tsx with convertFileSrc local-path conversion and analysis-driven targetText defaults.
+- Installed frontend PDF dependencies react-pdf and pdfjs-dist, then verified npm run test and npm run frontend:build both succeed after integration.
+- Connected split-view dashboard interactions by adding activeHighlightText state in App.tsx, passing it into InteractivePdfViewer targetText, and clearing it when a new PDF is selected.
+- Made extracted values clickable in the right JSON data panel (lattice values, band gaps, transition labels, methodology summary) so clicks update activeHighlightText and trigger PDF scroll/highlight targeting.
+- Revalidated the dashboard integration with npm run test and npm run frontend:build; both pass (with existing non-blocking react-pdf/vite warnings).
+- Updated src-tauri/src/ai_extractor.rs to add Ollama as an AiProvider, route Ollama requests to http://localhost:11434/api/chat, and parse Ollama chat responses for model JSON content.
+- Updated AI auth flow so provider == Ollama bypasses keyring lookup and sends local inference requests without API key authentication.
+- Strengthened the backend system prompt to explicitly require ONLY raw JSON output (single JSON object, no markdown or extra text) to improve formatting reliability with local models.
+- Verified backend integrity after Ollama integration with cargo +stable-x86_64-pc-windows-msvc check (passes).
+- Added Ollama model discovery backend support via get_ollama_models (Tauri command), calling http://localhost:11434/api/tags, parsing installed model names from models[].name, and handling connection-refused cases gracefully.
+- Updated Settings UI to call get_ollama_models when Ollama (Local) is selected, show Detecting local models... while loading, switch to a model select dropdown when models are detected, and fall back to text input with warning when detection fails or returns empty.
+- Added typed frontend API wrapper getOllamaModels in src/lib/api.ts and validated the full frontend flow with npm run test and npm run frontend:build.
+- Refactored database persistence for dynamic AI schemas by replacing lattice_parameters, band_gaps, and methodology_summary with a single extracted_data TEXT column in papers.
+- Added a lightweight schema migration check in database.rs that drops/recreates papers only when legacy columns are detected or extracted_data is missing, preserving the new schema going forward.
+- Updated save/get paper flow to use extracted_data string payloads end-to-end: Rust command signature, DB insert/query mapping, frontend invoke contract, and App save call now serializes analysis JSON into extractedData.
+- Revalidated backend and frontend after schema refactor with cargo check, npm run test, and npm run frontend:build (all passing; existing non-blocking build warnings unchanged).
+- Upgraded ai_extractor.rs for dynamic extraction schemas by adding target_schema-driven prompt construction and strict key validation that enforces exact JSON key matching for the requested schema.
+- Updated the analyze_paper Tauri command to accept target_schema: Vec<String> and return dynamic JSON output; frontend analyze invocation now sends target_schema and remains backward-compatible with the existing dashboard parser.
+- Removed legacy fixed-field summary validation logic and static-only extraction structs from the Rust extractor path, then verified integrity with cargo check and npm run test.
+- Added a new localStorage-backed Extraction Schema setting in aiSettings.ts with default fields: ['Lattice Parameters', 'Band Gaps', 'Methodology Summary'] plus normalization and fallback logic.
+- Added a Schema Builder UI section in the Settings modal that supports add/edit/delete of custom extraction fields and validates at least one non-empty schema key before saving.
+- Wired saved extractionSchema into analyze requests as targetSchema, and verified the updated flow with npm run test, npm run frontend:build, and cargo check.
+- Updated the main dashboard analysis flow to explicitly reload target_schema from localStorage (loadAiSettings) before each analyze call and pass it into analyze_paper IPC with text/provider/model.
+- Refactored the right-hand Data Panel to dynamic rendering with Object.entries() over the returned JSON object, replacing hardcoded Band Gaps/Methodology sections.
+- Kept extracted values clickable in the dynamic panel by mapping each value to a highlight string and routing click events through activeHighlightText to preserve PDF auto-scroll highlighting behavior.
+- Added a reusable right-panel component src/components/DynamicDataTable.tsx that renders dynamic extraction output as a dark-mode two-column table (Key/Value) using Object.entries().
+- Integrated DynamicDataTable into App.tsx, replacing inline panel rendering while preserving clickable value-to-highlight behavior for the PDF viewer.
+- Added subtle gray styling for values equal to 'Not mentioned' so missing data is visually distinct from extracted findings.
+- Added RAG text chunking support in ai_extractor.rs via chunk_text_for_rag(pdf_text), splitting content into 500-word windows with 50-word overlap for retrieval-friendly segmentation.
+- Added provider-aware embedding generation in ai_extractor.rs via generate_embeddings(text_chunks, provider, model_name), with OpenAI-compatible /v1/embeddings payloads for OpenAI/Mistral/DeepSeek/OpenRouter and /api/embeddings payloads for Ollama.
+- Extended extractor error handling and response parsing for embeddings (unsupported provider handling, missing embedding vector detection, and strict JSON parsing) while reusing secure keyring lookup/scrubbing for cloud providers.
+- Added SQLite document_chunks table support in database.rs (id, paper_id, chunk_text, embedding BLOB) with index on paper_id and schema initialization/migration-safe creation.
+- Added save_paper_embeddings(app_handle, paper_id, text_chunks, embeddings) to serialize Vec<f32> vectors into little-endian byte blobs and persist chunk/embedding rows transactionally.
+- Added find_similar_chunks(app_handle, query_embedding, top_k) to load stored embedding blobs, deserialize to Vec<f32>, compute cosine similarity in Rust, and return top matches with parent paper titles.
+- Exposed new Tauri IPC commands save_paper_embeddings_to_db and find_similar_chunks_in_db in main.rs for frontend retrieval workflows.
+- Added a new dark-mode Library Chat modal in App.tsx with message history, user/AI bubble rendering, and bottom-pinned message input for RAG Q&A over saved papers.
+- Added frontend Tauri API wrapper chatWithLibrary(query, providerType, modelName) in src/lib/api.ts to invoke backend chat_with_library with strict input validation.
+- Wired Library Chat send flow to append immediate User messages, call chat_with_library using active provider/model settings, show 'Searching library...' while awaiting response, and append returned text as AI messages.
+- Added final RAG Tauri command ai_extractor::chat_with_library(query, provider, model_name): embeds the query, retrieves top-5 similar library chunks from SQLite, builds a context-only research-assistant prompt, and returns plain-text model output.
+- Added ai_extractor chat payload builders for OpenAI-compatible providers, Anthropic, Gemini, and Ollama (non-JSON constrained) plus a shared call_chat_completion helper for provider endpoint dispatch/auth/response parsing.
+- Registered ai_extractor::chat_with_library in Tauri invoke_handler so frontend can call the full retrieval-augmented chat pipeline through a single command.
+- Fixed Windows toolchain mismatch for tauri dev by pinning the workspace to stable-x86_64-pc-windows-msvc (rust-toolchain.toml) and setting Cargo build target to x86_64-pc-windows-msvc (.cargo/config.toml), resolving ring/gcc.exe build failures.
+- Restored dashboard styling by adding missing Tailwind setup files (tailwind.config.cjs, postcss.config.cjs), creating src/index.css with Tailwind directives, and importing it in src/main.tsx.
+- Applied a full skill-guided frontend redesign across the app shell in App.tsx with a new atmospheric layout, premium sidebar/dashboard composition, responsive behavior, and refreshed settings/library chat modal presentation while preserving existing logic.
+- Rebuilt the visual system in src/index.css using custom design tokens, expressive typography (Sora + Manrope), layered backgrounds, reusable button/input/panel primitives, custom scrollbars, and staged motion for panel entrance.
+- Updated DynamicDataTable and InteractivePdfViewer styling to align with the new design language (improved table hierarchy, interactive states, and higher-contrast PDF highlight treatment).
+- Revalidated redesigned UI with npm run test, npm run frontend:build, and the frontend-design ux_audit script.
+- Fixed Tauri v2 command argument naming mismatches in src/lib/api.ts by switching command payload keys to camelCase (apiKey, localFilePath, extractedData, modelName, pdfText, targetSchema), resolving save_api_key invalid args errors and preventing similar invoke failures.
+- Added backend compatibility for save_api_key payload parsing in main.rs using a deserialized command payload that accepts both apiKey (camelCase) and api_key (snake_case), preventing command-argument mismatch errors from stale or mixed frontend bundles.
+- Updated provider key save UX in App.tsx to clear typed API keys from the input immediately on Save click (and keep cleared on failures) while preserving error feedback/status handling.
+- Hardened save_api_key command compatibility in main.rs further: it now accepts either top-level provider/apiKey arguments or a nested payload object, preventing 'missing required key payload' runtime errors across mixed frontend/backend versions.
+- Hardened save_api_key cross-version compatibility end-to-end: frontend now sends both top-level args and nested payload, while backend accepts apiKey, api_key, and payload forms to prevent failures during mixed stale/reloaded sessions.
+- Improved save-key failure visibility by surfacing backend save errors in the settings status banner in addition to provider-level inline errors.
+- Added strict secure-store save verification in save_api_key command: backend now immediately re-checks key readability after write and returns an explicit error if verification fails.
+- Added frontend post-save verification and in-modal status rendering so failed key persistence is clearly visible while the Settings modal is open (no more silent "not saved" behavior).
+- Stabilized Windows credential verification by adding short retry loops to save_api_key backend verification and provider status refresh checks in App.tsx, reducing false negatives caused by immediate read-after-write timing.
+- Updated save-key flow to be fail-safe for Windows keyring timing quirks: backend no longer hard-fails when post-write verification is flaky after successful write, and frontend now marks provider keys as stored immediately after successful save.
+- Hardened provider status UI consistency in App.tsx so successful key-save state is preserved against stale/late refresh results; background recheck now confirms state without reverting to false negatives.
+- Added persistent provider-key status hints in App.tsx (boolean-only localStorage metadata, no secret values) so Settings and library-chat key presence indicators remain consistent after successful saves even when OS-vault checks are intermittently stale.
+- Standardized provider-to-vault mapping in Rust so all keyring operations use canonical IDs (openai/anthropic/gemini/mistral/deepseek/openrouter/ollama), preventing mismatches between UI display labels (for example "Mistral AI") and stored credential entries.
+- Extended AiProvider parsing aliases to safely normalize legacy/display provider strings (including space/hyphen/underscore variants and routed labels like Meta AI/Cohere/Perplexity/Groq/Together AI) before save/check/chat key access.
+- Removed stale frontend key-state gating by adding live backend key checks before both Analyze and Library Chat sends in App.tsx, then syncing provider status state from the check result.
+- Updated Settings modal open flow to immediately refresh all provider key statuses so Manage Providers reflects current OS-vault state as soon as it is opened.
+- Added backend compatibility for legacy credential-vault account IDs: chat key loading now falls back across provider-specific legacy IDs (for example mistral_ai/open_router/google_cloud_ai) and auto-migrates discovered keys into canonical vault IDs.
+- Updated check_api_key command to detect legacy vault IDs as well, so Settings key-status checks now correctly reflect previously stored credentials from older naming schemes.
+- Tightened save_api_key verification behavior in main.rs to return an explicit error when post-write OS-vault readability cannot be confirmed, eliminating false-success key-save states.
+- Removed App.tsx localStorage key-hint fallback (`kura.provider.key.hints.v1`) and switched provider status to backend-truthful checks only, preventing stale "key stored" UI states from masking missing credentials.
+- Updated ensureProviderKeyReady in App.tsx to always perform a live provider vault check (via refreshManagedProvider) before Analyze/Library Chat operations.
+- Fixed false "API key was written but could not be verified" save failures by changing backend post-save verification in main.rs to best-effort retries plus warning logs (no hard failure after successful OS-vault write).
+- Increased App.tsx provider key-read retries and changed save flow to refresh backend status immediately after save, showing a clear "saved, still syncing" message when vault propagation is delayed.
+- Added a transient in-process API key fallback cache in ai_extractor.rs keyed by canonical provider ID, so chat/analyze key loading can proceed during Windows OS-vault readback lag after a successful save.
+- Wired main.rs save_api_key and check_api_key to populate and consult the transient fallback cache, so Manage Providers Refresh Status and Library Chat preflight no longer false-fail while vault visibility catches up.
+- Refactored ai_extractor embedding architecture with a new EmbeddingProvider enum (`Cloud(model_name)` and `Local`) and updated generate_embeddings to branch by provider mode.
+- Added fastembed integration for Local embeddings (spawn_blocking + TextEmbedding::try_new + embed) and mapped failures into explicit LocalEmbeddingFailure errors.
+- Split existing HTTP embedding path into a dedicated cloud flow that still uses secure OS-vault API key loading and provider-authenticated requests.
+- Updated library-chat retrieval embedding selection to use provider-specific cloud embedding defaults with automatic fallback to local fastembed when cloud embedding is unsupported or returns invalid-model style errors.
+- Added new Tauri command ai_extractor::initialize_local_embedding(app: AppHandle) to preload local embedding runtime using fastembed model `mxbai-embed-large` (`EmbeddingModel::MxbaiEmbedLargeV1`).
+- Implemented embedding-download-status event streaming with staged payloads (`status`, `progress`) emitted before and during initialization (`Preparing local embedding runtime...`, `Downloading weights...`, `Loading into memory...`, `Ready`).
+- Added reusable in-process local embedding model cache and updated Local embedding generation to reuse the preloaded model (lazy-init fallback remains if command was not called first).
+- Integrated embedding-engine controls into the existing React Settings modal: dropdown for Cloud vs Local mode, cloud embedding model input, and local initialize/reinitialize action.
+- Added frontend command wrapper for initialize_local_embedding plus real-time event listener for embedding-download-status using @tauri-apps/api/event.
+- Added live progress UI (status label + progress bar) during local model initialization and automatic swap to a green Local Engine Ready badge after success.
+- Added embedding preference persistence in localStorage (`kura.embedding.preferences.v1`) and save flow wiring so engine/model choice is retained across app sessions.
+- Wired persisted embedding preference payloads from App.tsx into both analyze_paper and chat_with_library invoke requests, so RAG calls carry `embeddingProvider` alongside chat provider/model.
+- Extended backend command contracts to accept embedding preference payloads (`engine`, `cloudModelName`) for both analyze and chat flows, with serde-compatible optional parsing for backward compatibility.
+- Added backend preference-to-runtime resolver so `Local` explicitly routes to fastembed without embedding API-key lookup, while `Cloud` uses requested cloud model (or provider default fallback if missing).
+- Updated analyze_paper_with_target_schema to prewarm local embedding runtime when Local engine is selected, ensuring embedded Rust model readiness during extraction flow.
+- Added ai_extractor fastembed model-mapping helper `get_fastembed_model(model_name: &str)` to support multiple open-source local embedding models by string ID.
+- Implemented mappings: `mxbai-embed-large` -> `MxbaiEmbedLargeV1`, `nomic-embed-text` -> `NomicEmbedTextV15`, `bge-small-en` -> `BGESmallENV15`, `bge-base-en` -> `BGEBaseENV15`, `all-minilm-l6-v2` -> `AllMiniLML6V2`.
+- Added unknown-model fallback to lightweight `BGESmallENV15` and routed local model initialization through the new helper (default request remains `mxbai-embed-large`).
+- Updated initialize_local_embedding command to accept `local_model_name: String` and initialize/cache the exact requested fastembed model variant.
+- Updated generate_embeddings Local routing to carry `local_model_name` through `EmbeddingProvider::Local(String)` and initialize/reload the local ONNX engine dynamically for the selected model.
+- Added local model-aware runtime caching (stores both model instance and active model name) so switching models reinitializes correctly while repeated calls reuse the loaded engine.
+- Extended frontend embedding preferences with `localModelName`, added a local model selector in Settings, and passed the selected model into initialize_local_embedding and RAG embedding payloads.
+- Refined Settings > Embedding Engine local-model UX to the requested four options with inline descriptions (speed/accuracy/context/ultra-lightweight guidance) and removed non-requested entries from the UI list.
+- Updated local preference normalization in App.tsx to validate local model IDs against supported UI options and fall back safely to `mxbai-embed-large` for unknown/stale values.
+- Fixed desktop PDF selection path resolution by replacing browser file-input flow (`C:\\fakepath` behavior) with a native backend file picker command returning an absolute PDF path.
+- Added new Tauri command `pick_pdf_file` in main.rs (using `rfd::FileDialog`) and frontend wrapper `pickPdfFile()` in api.ts.
+- Refactored App.tsx Select PDF action to use native picker results directly for extraction/analyze/save flows, eliminating the "Invalid File Path" runtime error on Windows webview file inputs.
+- Fixed hard app crash on certain malformed/unsupported PDFs (`pdf-extract` panic: `unhandled function type 4`) by wrapping `pdf_extract::extract_text` in `catch_unwind` inside pdf_parser.rs and converting panic payloads into normal parser errors.
+- Added a secondary panic guard at the `extract_pdf_text` Tauri command boundary in main.rs to prevent any parser panic from crossing non-unwind FFI callbacks and aborting the app.
+- Migrated PDF text extraction to frontend pdf.js: removed backend `extract_pdf_text` command and removed `pdf_parser` module from Rust command surface.
+- Removed `pdf-extract` crate from `src-tauri/Cargo.toml` and deleted obsolete `src-tauri/src/pdf_parser.rs` backend parser file.
+- Added frontend utility `src/lib/pdfText.ts` using pdf.js (`react-pdf`/`pdfjs-dist`) to extract page text from the selected PDF URL and return normalized plain text for analysis.
+- Updated App analysis flow to call frontend `extractPdfText(resolvedPdfUrl)` before invoking `analyze_paper`, preserving backend analyze/RAG command usage with safe plain-text input.
+- Replaced temporary `src/lib/pdfText.ts` utility with requested `src/lib/pdfExtractor.ts` and implemented `extractTextFromPdf(fileUrl)` using `pdfjsLib.getDocument(fileUrl).promise` plus per-page `getTextContent()` aggregation.
+- Updated frontend extraction output shaping to join text items with spaces and pages with newlines, returning one clean combined string for downstream analysis.
+- Added safe try/catch return-path in `extractTextFromPdf` that returns a non-throwing error message string for corrupted/unsupported PDFs, then wired App.tsx to detect that marker and show a user-facing extraction error without crashing.
+- Tightened App.tsx dashboard flow to always convert selected local PDF paths through `convertFileSrc` (asset URL) before frontend extraction, removing local-path fallback behavior.
+- Kept extraction/analyze state progression explicit in the updated flow (`Extracting text...` then `Analyzing with AI...`) while passing the extracted plain text directly into the existing `analyze_paper` command.
+- Added new first-run full-screen setup flow via `src/components/SetupWizard.tsx` with two steps: chat provider + secure cloud key save/verification and embedding engine configuration (cloud/local).
+- Wired SetupWizard into App startup using `kura.setup.completed` localStorage gating, and on completion now refreshes active provider/model + embedding preferences from storage before unlocking the main dashboard.
+- Connected local embedding setup inside the wizard to the existing `initialize_local_embedding` command and live `embedding-download-status` event stream, including progress bar, readiness state, and Finish gating until requirements are satisfied.
+- Updated `App.tsx` to hard-gate first-run mode: when `kura.setup.completed` is false/missing, App now renders only `SetupWizard` and does not render the sidebar/dashboard shell.
+- Added explicit mount-time setup flag check plus active-state hydration from localStorage so wizard-selected provider/model/embedding preferences are loaded before first dashboard interaction.
+- Updated initial dashboard boot effect to run only after setup completion, ensuring first extraction uses the newly committed wizard choices.
+- Fixed PDF.js runtime version mismatch (`API 5.4.296` vs `Worker 5.6.205`) by pinning top-level `pdfjs-dist` to `5.4.296` to match `react-pdf`'s internal API version.
+- Reinstalled dependencies and verified deduped alignment (`pdfjs-dist@5.4.296` for both direct and transitive paths), eliminating worker/API drift.
+- Revalidated frontend health after the dependency fix with `npm run test` and `npm run frontend:build`.
+- Added new backend Tauri command `read_local_pdf(path: String) -> Result<Vec<u8>, String>` in `main.rs`, using `std::fs::read(path)` and mapping OS read errors into `String`.
+- Registered `read_local_pdf` inside `tauri::Builder::invoke_handler` so the frontend can request raw PDF bytes directly.
+- Revalidated backend compilation with `cargo check` after command registration.
+- Updated `src/lib/pdfExtractor.ts` to load local PDF bytes through `invoke('read_local_pdf', { path })` and pass them into pdf.js via `getDocument({ data: fileData })`, bypassing webview/network fetch.
+- Updated PDF.js worker setup in `pdfExtractor.ts` to Vite-safe `pdf.worker.mjs` URL wiring at module init.
+- Updated `App.tsx` extraction flow to pass the absolute local file path (`resolvedPath`) into `extractTextFromPdf`, while keeping asset URL usage for viewer rendering.
+- Revalidated full integration with `npm run test` and `cargo check`.
+- Removed `convertFileSrc` usage from `App.tsx` PDF selection logic and eliminated the asset-URL conversion branch from the picker flow.
+- Updated selected PDF assignment in `handleSelectPdf` to keep/use the raw absolute path returned by `pick_pdf_file`.
+- Confirmed extraction continues to use the raw absolute path directly with the new byte-reading `extractTextFromPdf` flow.
+- Fixed PDF viewer `file://` fetch failure (`Unexpected server response (0)`) by migrating `InteractivePdfViewer` to load bytes through `invoke('read_local_pdf', { path })` and render with `react-pdf` `Document` source `{ data: Uint8Array }`.
+- Updated `InteractivePdfViewer` prop contract from `fileUrl` to `filePath` and added local byte normalization/loading state handling for robust error feedback.
+- Updated `App.tsx` viewer state naming (`selectedPdfPath`) and prop wiring so both extraction and viewer now use the same raw absolute local path source.
+- Updated `src/lib/pdfExtractor.ts` back to URL-driven extraction: removed `invoke('read_local_pdf')` from the utility and restored `pdfjsLib.getDocument(fileUrl).promise`.
+- Changed `extractTextFromPdf` signature back to `fileUrl: string` and restored URL-focused input validation/error message text.
+- Kept the Vite worker configuration in `pdfExtractor.ts` on `pdf.worker.mjs` as requested.
+- Updated `App.tsx` PDF selection flow to build a shared safe Blob URL from backend bytes (`invoke('read_local_pdf', { path })` -> `Blob` -> `URL.createObjectURL`) and pass that same URL to both viewer and extractor.
+- Added object URL lifecycle management in `App.tsx` (revoke previous URL on reselection and on component unmount) to prevent stale Blob URL memory leaks.
+- Updated `InteractivePdfViewer.tsx` back to URL-based document input (`fileUrl`) so it consumes the shared Blob URL directly and avoids detached buffer worker handoff issues.
+- Aligned App invoke typing to `invoke<Uint8Array>("read_local_pdf", { path })` in the PDF selection flow and kept shared Blob URL usage for both viewer and extractor.
+- Added an explicit byte normalization step before Blob construction to satisfy strict TypeScript `BlobPart` typing while preserving the same runtime pipeline.
+- Fixed oversized highlight-target UX regression by updating `DynamicDataTable.tsx` to derive highlight text from the first meaningful primitive leaf value (instead of serializing whole nested JSON objects).
+- Added click guards in `DynamicDataTable.tsx` so values resolving to `Not mentioned` are visually disabled and no longer set noisy highlight targets.
+- Added highlight preview truncation in both `App.tsx` (Source Document active target) and `InteractivePdfViewer.tsx` (Search target label) to prevent long extracted text from collapsing the panel layout.
+- Updated extraction `SYSTEM_PROMPT` in `src-tauri/src/ai_extractor.rs` to explicitly require a strictly flat JSON object, forbid nested objects/arrays, require paragraph-text values, include a strict example format, and instruct multi-part keys to be summarized into one cohesive string.
+- Reinforced the same flat-output constraints in `build_user_prompt` strict rules for analyze flow.
+- Tightened provider response schema constraints (`openai_json_schema` and `gemini_json_schema`) to string-only values so structured/nested outputs are rejected upstream.
+- Revalidated backend compilation with `cargo check` after prompt/schema enforcement updates.
+- Updated `DynamicDataTable.tsx` to safely handle rogue nested JSON values by rendering structured data with `JSON.stringify(value, null, 2)` while generating click highlight targets from a sanitized string that strips JSON wrapping characters (`[]{}"`).
+- Added PDF-search-friendly highlight truncation rule in `DynamicDataTable.tsx`: if a highlight candidate exceeds 150 characters, only the first 100 characters are sent to the click handler.
+- Kept primitive string rendering behavior intact and preserved disabled-click handling for values that resolve to `Not mentioned`.
+- Removed Source Document debug text `Active highlight target` from `App.tsx` above the PDF viewer panel.
+- Removed PDF viewer debug text `Search target` from `InteractivePdfViewer.tsx`.
+- Updated viewer layout containers to ensure the PDF area consumes full panel height with `flex-1` and `overflow-hidden` behavior (`App.tsx` wrapper + `InteractivePdfViewer.tsx` root/scroll region).
+- Revalidated frontend compile health with `npm run test` after UI cleanup.
+- Updated extraction `SYSTEM_PROMPT` in `src-tauri/src/ai_extractor.rs` to explicitly require exact, verbatim source sentences for every JSON value and forbid paraphrasing/summarization/newly written text.
+- Added the same verbatim-quote constraints to `build_user_prompt` strict output rules and updated multi-part-key guidance to combine exact quotes into a single plain-text string (still no arrays/nesting).
+- Revalidated backend compilation with `cargo check` after the prompt updates.
+- Updated `DynamicDataTable.tsx` click-to-search behavior to always derive a "sniper" search target from only the first 35 characters (`substring(0, 35).trim()`) before calling the highlight click handler.
+- Updated active-row matching in `DynamicDataTable.tsx` to compare against the shortened 35-character search target so selected-state visuals remain correct.
+- Removed previous 150/100 highlight truncation path in favor of the new strict 35-character click target approach.
+- Removed the sidebar subtitle text `Material Physics Command Deck` from the main app header in `App.tsx`.
+- Revalidated frontend compile health with `npm run test` after the UI text removal.
+- Added a new backend coordinator command `process_paper_embeddings(app_handle, paper_id, text, embedding_provider, local_model_name)` in `src-tauri/src/ai_extractor.rs`.
+- Wired command internals to existing pipeline pieces: `chunk_text_for_rag` for chunking, `generate_embeddings` for vector generation, and `save_paper_embeddings` for DB persistence keyed by `paper_id`.
+- Registered `ai_extractor::process_paper_embeddings` in `main.rs` `invoke_handler` and revalidated backend build with `cargo check`.
+- Updated backend save contract to return inserted `paper_id`: `save_paper_record` now returns `i64`, and `save_paper_to_db` command now returns `Result<i64, String>`.
+- Added frontend API wrappers in `src/lib/api.ts`: `savePaperToDb(...) -> Promise<number>` and `processPaperEmbeddings(...) -> Promise<boolean>` for invoking the coordinator with active embedding preferences.
+- Wired `App.tsx` analysis flow to call `processPaperEmbeddings` immediately after successful paper save using the returned `paperId`, passing full extracted PDF text and persisted embedding preferences.
+- Added a new processing state `embedding` with user-facing status text `Generating library embeddings...`, and kept the UI in loading mode until embedding generation completes.
+- Added graceful embedding-failure alerting in `App.tsx` so users are informed when analysis/save succeeded but chat embeddings for that paper failed.
+- Revalidated both frontend and backend builds after integration (`npm run test`, `cargo check`).
+- Added new database function `delete_paper(app_handle, paper_id)` in `database.rs` that safely deletes RAG rows first (`document_chunks`) and then deletes the paper row (`papers`) inside one transaction.
+- Added a new Tauri command `delete_paper(app_handle: tauri::AppHandle, paper_id: i64) -> Result<(), String>` in `main.rs` that calls the database delete function.
+- Registered `delete_paper` in `main.rs` `invoke_handler`, and revalidated backend compilation with `cargo check`.
+- Added a frontend library-delete action in `App.tsx` using `Trash2` from `lucide-react` as a subtle hover-only icon button on each Library Vault paper row.
+- Implemented `handleDeletePaper(paperId)` in `App.tsx` with `window.confirm(...)`, backend `invoke('delete_paper', { paperId })`, and immediate `refreshSavedPapers(false)` UI reload.
+- Added success/error feedback for delete flow (`Removed from Library` toast on success; sidebar error message on failure) and revalidated with `npm run test`.
+- Added `csv` dependency to `src-tauri/Cargo.toml` for fast CSV export support.
+- Added `rust_xlsxwriter` dependency to `src-tauri/Cargo.toml` for native `.xlsx` Excel generation.
+- Revalidated backend dependency integration with `cargo check` (new crates resolved and build passed).
+- Added a new backend library export pipeline in `src-tauri/src/database.rs`: `export_library(app_handle, export_format)` now opens a dynamic native save dialog (csv/json/xlsx/md), supports cancel-safe early return (`Cancelled`), fetches all saved papers, builds dynamic unified extraction headers via `BTreeSet`, and routes file writing by format.
+- Implemented format-specific writers: CSV with dynamic header row (`Title`, `Local Path`, extraction keys), XLSX via `rust_xlsxwriter` with bold headers, JSON flat object export (`title`, `date` + extracted fields), and Markdown table export from the same dynamic row model.
+- Exposed and registered a new Tauri command in `src-tauri/src/main.rs`: `export_library(app_handle: tauri::AppHandle, export_format: String) -> Result<String, String>`, then revalidated backend compilation with `cargo check`.
+- Wired Library Vault export controls in `src/App.tsx` as a new action group near the vault header with four options: Export as Excel (.xlsx), Export as CSV, Export as JSON, and Export as Markdown.
+- Added `handleExport(format)` in `App.tsx` using `invoke('export_library', { exportFormat: format })` inside a try/catch flow with export-loading state and active-format tracking.
+- Added export feedback UX in `App.tsx`: option icons switch to a spinning loader while export is in progress, successful non-cancel exports show a success toast with saved path, and failures show an error toast variant.
+- Revalidated frontend TypeScript health after export UI wiring with `npm run test`.
+- Added print-targeted class hooks in `src/App.tsx` (`kura-sidebar`, `kura-main-dashboard`, `kura-top-navigation`, `kura-dashboard-grid`, `kura-pdf-panel`, `kura-pdf-viewer-host`, `kura-extraction-console`) so print styles can reliably hide non-print UI and expand the PDF area.
+- Added a new `@media print` block in `src/index.css` that hides sidebar/top navigation/extraction console, forces the main dashboard and InteractivePdfViewer containers to full-width printable layout (`width: 100%`, `height: auto`, `overflow: visible`, `display: block`), and resets decorative dark backgrounds to white for ink-friendly output.
+- Added print-specific highlight preservation in `src/index.css` by setting `print-color-adjust: exact` (and `-webkit-print-color-adjust`) on `.kura-pdf-highlight` so yellow evidence highlights remain visible when printing.
+- Revalidated frontend TypeScript health after print feature wiring with `npm run test`.
+- Added a new `Print Evidence` action in the Source Document controls of `src/App.tsx`, using the `Printer` icon from `lucide-react` and a direct `window.print()` click handler.
+- Added in-context helper text below the print button: `Prints the currently visible page and highlights. Select "Save to PDF" in the dialog.` so users know to export via native print flow.
+- Added disabled state handling for `Print Evidence` when no PDF is loaded, and revalidated frontend TypeScript health with `npm run test`.
+- Upgraded `src/components/InteractivePdfViewer.tsx` to support full-document print output by adding a dedicated print-only page container inside `<Document>` that loops `Array.from(new Array(numPages), ...)` and renders every page.
+- Preserved highlight behavior across the full printed PDF by passing the same `customTextRenderer` highlighting logic into every print-only `Page` render.
+- Added screen-vs-print visibility rules in `src/components/InteractivePdfViewer.css` (`interactive-pdf-screen-pages` hidden in print, `interactive-pdf-print-pages` shown only in print) plus print-safe page frame styles to avoid split artifacts.
+- Revalidated frontend TypeScript health after the print-all-pages viewer update with `npm run test`.
+- Updated the main `@media print` block in `src/index.css` for the multi-page print engine: sidebar, header/top navigation, extraction data table panel, and the standard single-page viewer container are now force-hidden with `display: none !important`.
+- Updated `src/index.css` print visibility routing so the new multi-page print container (`interactive-pdf-print-pages`) is forced to `display: block !important` during print.
+- Added explicit print pagination rules in `src/index.css` to prevent overlap across PDF pages: `.react-pdf__Page { page-break-inside: avoid; page-break-after: always; margin-bottom: 20px; }`.
+- Kept highlight print fidelity in `src/index.css` with `print-color-adjust: exact` (`-webkit-print-color-adjust` included) and revalidated frontend TypeScript health with `npm run test`.
+- Added a comprehensive, humanized root `README.md` with logo usage, quick start, core workflows (analyze/chat/export/print), configuration details, command reference, architecture map, troubleshooting, security/data notes, contribution guidance, and license links.
+- Added root `LICENSE` using the MIT license template (`Copyright (c) 2026 Kura Team`).
+- Added root `CONTRIBUTING.md` with setup instructions, development workflow, quality gates (`npm run test`, `cargo check`), repo documentation expectations, PR checklist, and issue reporting guidance.
+- Added compatibility file `contributiion.md` that redirects readers to the canonical `CONTRIBUTING.md` path.
+- Added a dedicated README API reference section listing key Tauri commands and their purpose for faster contributor onboarding.
+- Added a new cross-platform GitHub Actions workflow at `.github/workflows/cross-platform-setup.yml` that runs on `windows-latest`, `macos-latest`, and `ubuntu-latest` for every push/PR/manual run.
+- Workflow installs Tauri Linux system packages, sets up Node 20 and Rust stable, detects each runner host Rust target, overrides workspace target settings for portability, runs `npm ci`, `npm run test`, `npm run frontend:build`, `cargo check`, and a debug Tauri build smoke test.
+- Added CI concurrency and caching (`actions/setup-node` npm cache + `Swatinem/rust-cache`) to keep validation reliable and fast across operating systems.

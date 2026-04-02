@@ -1,0 +1,76 @@
+.interactive-pdf-viewer {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(57, 208, 190, 0.52) rgba(0, 0, 0, 0.32);
+}
+
+.interactive-pdf-viewer::-webkit-scrollbar {
+  width: 10px;
+}
+
+.interactive-pdf-viewer::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.36);
+}
+
+.interactive-pdf-viewer::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(57, 208, 190, 0.78), rgba(244, 155, 74, 0.82));
+  border: 2px solid rgba(0, 0, 0, 0.36);
+}
+
+.interactive-pdf-document .react-pdf__Page {
+  display: flex;
+  justify-content: center;
+}
+
+.interactive-pdf-document .react-pdf__Page__canvas {
+  border: 1px solid rgba(190, 199, 214, 0.2);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+.interactive-pdf-screen-pages {
+  display: block;
+}
+
+.interactive-pdf-print-pages {
+  display: none;
+}
+
+.kura-pdf-highlight {
+  background-color: rgba(250, 204, 21, 0.88);
+  color: #151310;
+  border-radius: 0.125rem;
+  box-shadow: 0 0 0 1px rgba(143, 82, 18, 0.45);
+}
+
+.kura-pdf-highlight-focus {
+  animation: kura-highlight-pulse 1.2s ease-out 1;
+}
+
+@keyframes kura-highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 224, 71, 0.9);
+  }
+
+  100% {
+    box-shadow: 0 0 0 10px rgba(253, 224, 71, 0);
+  }
+}
+
+@media print {
+  .interactive-pdf-screen-pages {
+    display: none !important;
+  }
+
+  .interactive-pdf-print-pages {
+    display: block !important;
+  }
+
+  .interactive-pdf-page-frame {
+    margin-bottom: 0.4rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -1,0 +1,87 @@
+name: Cross-Platform Setup Verification
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cross-platform-setup-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  setup-smoke:
+    name: Setup and Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    env:
+      CI: true
+      CARGO_TERM_COLOR: always
+      RUSTUP_TOOLCHAIN: stable
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies for Tauri
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Detect host Rust target and override workspace target
+        shell: pwsh
+        run: |
+          $hostTarget = ((rustc -vV | Select-String '^host:').ToString().Split(':')[1]).Trim()
+          "RUST_HOST_TARGET=$hostTarget" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARGO_BUILD_TARGET=$hostTarget" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using host target: $hostTarget"
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run TypeScript checks
+        run: npm run test
+
+      - name: Build frontend assets
+        run: npm run frontend:build
+
+      - name: Check Rust backend
+        run: cargo check --manifest-path src-tauri/Cargo.toml --target ${{ env.RUST_HOST_TARGET }}
+
+      - name: Build Tauri app (debug smoke test)
+        run: npm run build -- --debug

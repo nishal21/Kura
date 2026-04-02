@@ -1,0 +1,318 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --kura-bg: #090c10;
+  --kura-ink: #f4eee4;
+  --kura-muted: #a5afba;
+  --kura-line: rgba(190, 199, 214, 0.22);
+  --kura-panel-top: rgba(255, 255, 255, 0.05);
+  --kura-panel-bottom: rgba(8, 10, 15, 0.7);
+  --kura-orange: #f49b4a;
+  --kura-teal: #39d0be;
+  --kura-danger: #f37886;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  background: var(--kura-bg);
+  color: var(--kura-ink);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.kura-title {
+  font-family: "Sora", "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.kura-root {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(1000px 680px at -8% 2%, rgba(56, 189, 248, 0.16), transparent 64%),
+    radial-gradient(980px 700px at 105% -5%, rgba(249, 115, 22, 0.17), transparent 66%),
+    radial-gradient(880px 640px at 50% 118%, rgba(16, 185, 129, 0.15), transparent 70%),
+    linear-gradient(185deg, #07090d 0%, #0b0f16 35%, #07090d 100%);
+}
+
+.kura-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.68), transparent 80%);
+}
+
+.kura-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.kura-panel {
+  border: 1px solid var(--kura-line);
+  background:
+    linear-gradient(175deg, var(--kura-panel-top) 0%, var(--kura-panel-bottom) 100%),
+    linear-gradient(130deg, rgba(249, 115, 22, 0.06), rgba(45, 212, 191, 0.06));
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(7px);
+}
+
+.kura-cut {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+
+.kura-subpanel {
+  border: 1px solid rgba(190, 199, 214, 0.2);
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.22));
+}
+
+.kura-panel-animate {
+  animation: kura-rise 560ms cubic-bezier(0.22, 0.9, 0.2, 1) both;
+}
+
+@keyframes kura-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kura-section-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(228, 236, 247, 0.74);
+}
+
+.kura-chip {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  border: 1px solid rgba(190, 199, 214, 0.26);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: rgba(244, 238, 228, 0.88);
+}
+
+.kura-count-pill {
+  min-width: 1.8rem;
+  border: 1px solid rgba(244, 155, 74, 0.55);
+  background: rgba(244, 155, 74, 0.14);
+  padding: 0.2rem 0.45rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ffd2a4;
+}
+
+.kura-btn {
+  display: inline-flex;
+  min-height: 2.65rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 170ms ease, filter 170ms ease, border-color 170ms ease,
+    background-color 170ms ease;
+}
+
+.kura-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}
+
+.kura-btn:active {
+  transform: translateY(1px);
+}
+
+.kura-btn--mint {
+  border-color: rgba(57, 208, 190, 0.55);
+  background: rgba(12, 96, 93, 0.32);
+  color: #d7fff8;
+}
+
+.kura-btn--amber {
+  border-color: rgba(244, 155, 74, 0.58);
+  background: rgba(128, 63, 8, 0.34);
+  color: #ffe6ca;
+}
+
+.kura-btn--neutral {
+  border-color: rgba(190, 199, 214, 0.34);
+  background: rgba(13, 18, 26, 0.44);
+  color: #e4ebf6;
+}
+
+.kura-btn--ghost {
+  border-color: rgba(190, 199, 214, 0.24);
+  background: rgba(4, 7, 12, 0.35);
+  color: #cdd7e5;
+}
+
+.kura-btn--danger {
+  border-color: rgba(243, 120, 134, 0.55);
+  background: rgba(144, 39, 61, 0.27);
+  color: #ffd1d8;
+}
+
+.kura-input,
+.kura-select {
+  width: 100%;
+  border: 1px solid rgba(190, 199, 214, 0.32);
+  background: rgba(0, 0, 0, 0.31);
+  padding: 0.62rem 0.82rem;
+  color: #f8f2e9;
+  outline: none;
+  transition: border-color 170ms ease, box-shadow 170ms ease;
+}
+
+.kura-input::placeholder {
+  color: rgba(165, 175, 186, 0.75);
+}
+
+.kura-input:focus,
+.kura-select:focus {
+  border-color: rgba(57, 208, 190, 0.75);
+  box-shadow: 0 0 0 2px rgba(57, 208, 190, 0.2);
+}
+
+.kura-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(57, 208, 190, 0.48) rgba(7, 10, 14, 0.4);
+}
+
+.kura-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.kura-scrollbar::-webkit-scrollbar-track {
+  background: rgba(7, 10, 14, 0.45);
+}
+
+.kura-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(57, 208, 190, 0.72), rgba(244, 155, 74, 0.72));
+  border: 2px solid rgba(7, 10, 14, 0.4);
+}
+
+@media (max-width: 768px) {
+  .kura-root::before {
+    opacity: 0.45;
+    background-size: 26px 26px;
+  }
+
+  .kura-cut {
+    clip-path: none;
+  }
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .kura-root,
+  .kura-shell {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+  }
+
+  .kura-root::before {
+    display: none !important;
+  }
+
+  .kura-sidebar,
+  .kura-top-navigation,
+  .kura-extraction-console,
+  .interactive-pdf-screen-pages,
+  .kura-pdf-panel > .kura-subpanel:first-child {
+    display: none !important;
+  }
+
+  .interactive-pdf-print-pages {
+    display: block !important;
+  }
+
+  .kura-main-dashboard,
+  .kura-dashboard-grid,
+  .kura-pdf-panel,
+  .kura-pdf-viewer-host,
+  .interactive-pdf-viewer,
+  .interactive-pdf-document {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  .kura-panel,
+  .kura-subpanel {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border-color: #d4d4d4 !important;
+    backdrop-filter: none !important;
+  }
+
+  .interactive-pdf-document .react-pdf__Page__canvas {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .react-pdf__Page {
+    page-break-inside: avoid;
+    page-break-after: always;
+    margin-bottom: 20px;
+  }
+
+  .kura-pdf-highlight {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
