@@ -111,6 +111,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download all release bundles
         uses: actions/download-artifact@v4
         with:
@@ -132,6 +135,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT != '' && secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ steps.tag.outputs.value }}
         run: |
           set -euo pipefail
@@ -162,10 +166,11 @@ jobs:
           tag="$RELEASE_TAG"
           title="Kura ${tag}"
 
-          if gh release view "$tag" >/dev/null 2>&1; then
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
             echo "Release ${tag} already exists. Uploading/updating assets only."
           else
             run_with_retry gh release create "$tag" \
+              --repo "$GH_REPO" \
               --title "$title" \
               --notes "Automated production release for ${tag}." \
               --target "${GITHUB_SHA}"
@@ -178,4 +183,4 @@ jobs:
             exit 1
           fi
 
-          run_with_retry gh release upload "$tag" "${artifact_files[@]}" --clobber
+          run_with_retry gh release upload "$tag" "${artifact_files[@]}" --repo "$GH_REPO" --clobber

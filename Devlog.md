@@ -269,3 +269,4 @@
 - Mitigated GitHub secondary rate-limit failures during release publishing by serializing release workflow concurrency (`group: production-release`) and replacing the final publish action with a retry/backoff `gh` CLI release flow.
 - New publish logic now retries create/upload API calls up to 6 attempts with incremental delay, supports existing releases, and uploads all built artifacts from `release-artifacts` with `--clobber`.
 - Added release-token fallback in `.github/workflows/production-release.yml`: publish step now uses `secrets.RELEASE_PAT` when present, otherwise falls back to `secrets.GITHUB_TOKEN`, reducing `Resource not accessible by integration` failures in restricted-token repositories.
+- Fixed publish-stage `gh` errors (`fatal: not a git repository`) by adding an explicit checkout step in the `publish-release` job and making all `gh release` commands repo-explicit via `--repo $GH_REPO`.
