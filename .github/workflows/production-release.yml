@@ -82,15 +82,15 @@ jobs:
 
       - name: Build Linux production bundles
         if: runner.os == 'Linux'
-        run: npm run build -- --bundles deb appimage
+        run: npm run build -- --target ${{ env.RUST_HOST_TARGET }} --bundles deb appimage
 
       - name: Build macOS production bundles
         if: runner.os == 'macOS'
-        run: npm run build -- --bundles app dmg
+        run: npm run build -- --target ${{ env.RUST_HOST_TARGET }} --bundles app dmg
 
       - name: Build Windows production bundles
         if: runner.os == 'Windows'
-        run: npm run build -- --bundles msi nsis
+        run: npm run build -- --target ${{ env.RUST_HOST_TARGET }} --bundles msi nsis
 
       - name: Upload OS release bundles
         uses: actions/upload-artifact@v4

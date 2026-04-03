@@ -264,3 +264,5 @@
 - Revalidated project health after the release-workflow fix with `npm run test`.
 - Fixed production workflow build failures caused by invalid Tauri argument `--bundles all` by switching to OS-specific valid bundle sets in `.github/workflows/production-release.yml`: Linux (`deb appimage`), macOS (`app dmg`), Windows (`msi nsis`).
 - Hardened release artifact upload path matching further by adding `src-tauri/target/*/release/bundle/**` so CI can capture outputs across varying target directory layouts on hosted runners.
+- Fixed cross-target bundling failures in CI by forcing explicit host-target Tauri builds in workflows: production bundle jobs now pass `--target ${{ env.RUST_HOST_TARGET }}` for each OS bundle command, and setup smoke builds now pass `--debug --target ${{ env.RUST_HOST_TARGET }}`.
+- This prevents Linux/macOS runners from accidentally using the repository Windows default target (`x86_64-pc-windows-msvc`) during `tauri build`, which previously produced Windows executables and caused bundling `No such file or directory` errors.

@@ -84,4 +84,4 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --target ${{ env.RUST_HOST_TARGET }}
 
       - name: Build Tauri app (debug smoke test)
-        run: npm run build -- --debug
+        run: npm run build -- --debug --target ${{ env.RUST_HOST_TARGET }}
