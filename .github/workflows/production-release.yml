@@ -131,7 +131,7 @@ jobs:
       - name: Publish release and upload installers (retry on rate limits)
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT != '' && secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.tag.outputs.value }}
         run: |
           set -euo pipefail
