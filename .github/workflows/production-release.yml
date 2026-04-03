@@ -12,7 +12,7 @@ on:
         type: string
 
 concurrency:
-  group: production-release-${{ github.ref }}
+  group: production-release
   cancel-in-progress: false
 
 permissions:
@@ -128,14 +128,54 @@ jobs:
             echo "value=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish release and upload installers
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.value }}
-          target_commitish: ${{ github.sha }}
-          name: Kura ${{ steps.tag.outputs.value }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          files: release-artifacts/**
-          fail_on_unmatched_files: true
+      - name: Publish release and upload installers (retry on rate limits)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          run_with_retry() {
+            local max_attempts=6
+            local base_delay_seconds=30
+            local attempt=1
+
+            while true; do
+              if "$@"; then
+                return 0
+              fi
+
+              local exit_code=$?
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "Command failed after ${attempt} attempts: $*"
+                return "$exit_code"
+              fi
+
+              local sleep_seconds=$((base_delay_seconds * attempt))
+              echo "GitHub API call failed (attempt ${attempt}/${max_attempts}). Retrying in ${sleep_seconds}s..."
+              sleep "$sleep_seconds"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          tag="$RELEASE_TAG"
+          title="Kura ${tag}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists. Uploading/updating assets only."
+          else
+            run_with_retry gh release create "$tag" \
+              --title "$title" \
+              --notes "Automated production release for ${tag}." \
+              --target "${GITHUB_SHA}"
+          fi
+
+          mapfile -t artifact_files < <(find release-artifacts -type f)
+
+          if [ "${#artifact_files[@]}" -eq 0 ]; then
+            echo "No release artifacts found in release-artifacts"
+            exit 1
+          fi
+
+          run_with_retry gh release upload "$tag" "${artifact_files[@]}" --clobber

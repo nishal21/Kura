@@ -266,3 +266,5 @@
 - Hardened release artifact upload path matching further by adding `src-tauri/target/*/release/bundle/**` so CI can capture outputs across varying target directory layouts on hosted runners.
 - Fixed cross-target bundling failures in CI by forcing explicit host-target Tauri builds in workflows: production bundle jobs now pass `--target ${{ env.RUST_HOST_TARGET }}` for each OS bundle command, and setup smoke builds now pass `--debug --target ${{ env.RUST_HOST_TARGET }}`.
 - This prevents Linux/macOS runners from accidentally using the repository Windows default target (`x86_64-pc-windows-msvc`) during `tauri build`, which previously produced Windows executables and caused bundling `No such file or directory` errors.
+- Mitigated GitHub secondary rate-limit failures during release publishing by serializing release workflow concurrency (`group: production-release`) and replacing the final publish action with a retry/backoff `gh` CLI release flow.
+- New publish logic now retries create/upload API calls up to 6 attempts with incremental delay, supports existing releases, and uploads all built artifacts from `release-artifacts` with `--clobber`.
