@@ -92,14 +92,38 @@ jobs:
         if: runner.os == 'Windows'
         run: npm run build -- --target ${{ env.RUST_HOST_TARGET }} --bundles msi nsis
 
+      - name: Collect installer artifacts only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-installers
+
+          # Keep only distributable installers, not bundle internals.
+          find src-tauri/target -type f \( \
+            -name "*.AppImage" -o \
+            -name "*.deb" -o \
+            -name "*.rpm" -o \
+            -name "*.dmg" -o \
+            -name "*.msi" -o \
+            -name "*.exe" \
+          \) -print0 | while IFS= read -r -d '' file; do
+            cp -f "$file" release-installers/
+          done
+
+          if [ "$(find release-installers -maxdepth 1 -type f | wc -l)" -eq 0 ]; then
+            echo "No installer artifacts were collected from src-tauri/target"
+            exit 1
+          fi
+
+          echo "Collected installers:"
+          ls -lah release-installers
+
       - name: Upload OS release bundles
         uses: actions/upload-artifact@v4
         with:
           name: tauri-release-${{ matrix.os }}
-          path: |
-            src-tauri/target/${{ env.RUST_HOST_TARGET }}/release/bundle/**
-            src-tauri/target/release/bundle/**
-            src-tauri/target/*/release/bundle/**
+          path: release-installers/**
           if-no-files-found: error
           retention-days: 14
 
@@ -119,7 +143,7 @@ jobs:
         with:
           pattern: tauri-release-*
           path: release-artifacts
-          merge-multiple: false
+          merge-multiple: true
 
       - name: Resolve release tag
         id: tag
@@ -167,8 +191,17 @@ jobs:
           title="Kura ${tag}"
 
           if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
-            echo "Release ${tag} already exists. Uploading/updating assets only."
-          else
+            is_draft="$(gh release view "$tag" --repo "$GH_REPO" --json isDraft --jq '.isDraft')"
+
+            if [ "$is_draft" = "true" ]; then
+              echo "Draft release ${tag} exists. Recreating it to remove stale/bulk assets."
+              run_with_retry gh release delete "$tag" --repo "$GH_REPO" --yes
+            else
+              echo "Published release ${tag} exists. Assets will be updated in place."
+            fi
+          fi
+
+          if ! gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
             run_with_retry gh release create "$tag" \
               --repo "$GH_REPO" \
               --title "$title" \
@@ -176,34 +209,14 @@ jobs:
               --target "${GITHUB_SHA}"
           fi
 
-          mkdir -p release-upload
-
-          shopt -s nullglob
-          artifact_dirs=(release-artifacts/tauri-release-*)
-
-          if [ "${#artifact_dirs[@]}" -eq 0 ]; then
-            echo "No downloaded artifact directories found in release-artifacts"
-            ls -la release-artifacts || true
-            exit 1
-          fi
-
-          for artifact_dir in "${artifact_dirs[@]}"; do
-            if [ ! -d "$artifact_dir" ]; then
-              continue
-            fi
-
-            artifact_name="$(basename "$artifact_dir")"
-            archive_path="release-upload/${artifact_name}-${tag}.tar.gz"
-
-            tar -czf "$archive_path" -C "$artifact_dir" .
-            echo "Packaged ${artifact_name} into ${archive_path}"
-          done
-
-          mapfile -t artifact_files < <(find release-upload -maxdepth 1 -type f -name '*.tar.gz' | sort)
+          mapfile -t artifact_files < <(find release-artifacts -type f | sort)
 
           if [ "${#artifact_files[@]}" -eq 0 ]; then
-            echo "No packaged release artifacts found in release-upload"
+            echo "No release artifacts found in release-artifacts"
             exit 1
           fi
+
+          echo "Uploading ${#artifact_files[@]} release assets"
+          printf '%s\n' "${artifact_files[@]}"
 
           run_with_retry gh release upload "$tag" "${artifact_files[@]}" --repo "$GH_REPO" --clobber
