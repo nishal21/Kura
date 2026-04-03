@@ -262,3 +262,5 @@
 - Fixed production artifact upload failures by enabling Tauri bundle generation (`src-tauri/tauri.conf.json` -> `bundle.active: true`) so installer outputs are actually created during release builds.
 - Updated `.github/workflows/production-release.yml` to force bundle generation with `npm run build -- --bundles all` and broaden artifact upload paths to support both target layouts (`target/<triple>/release/bundle/**` and `target/release/bundle/**`).
 - Revalidated project health after the release-workflow fix with `npm run test`.
+- Fixed production workflow build failures caused by invalid Tauri argument `--bundles all` by switching to OS-specific valid bundle sets in `.github/workflows/production-release.yml`: Linux (`deb appimage`), macOS (`app dmg`), Windows (`msi nsis`).
+- Hardened release artifact upload path matching further by adding `src-tauri/target/*/release/bundle/**` so CI can capture outputs across varying target directory layouts on hosted runners.
